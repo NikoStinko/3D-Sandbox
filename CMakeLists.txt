@@ -1,15 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
-project(Simple3DViewer)
+project(3D-Sandbox)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Trouver les packages nécessaires
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(assimp REQUIRED)
 
-# Ajouter l'exécutable
 add_executable(${PROJECT_NAME} 
     src/main.cpp
     src/Shader.cpp
@@ -18,13 +16,11 @@ add_executable(${PROJECT_NAME}
     src/Mesh.cpp
 )
 
-# Inclure les répertoires
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${ASSIMP_INCLUDE_DIRS}
 )
 
-# Lier les bibliothèques
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${OPENGL_gl_LIBRARY}
     glfw
@@ -34,11 +30,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     pthread
 )
 
-# Créer les dossiers nécessaires
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/models)
 
-# Copier les ressources
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shaders)
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/resources)
 

@@ -32,7 +32,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Création de la fenêtre
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Simple 3D Viewer", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1024, 768, "3D Sandbox", NULL, NULL);
     if (!window) {
         std::cerr << "Échec de la création de la fenêtre GLFW" << std::endl;
         glfwTerminate();
