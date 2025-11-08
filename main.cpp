@@ -13,19 +13,31 @@
 
 // Charger les shaders depuis des fichiers
 std::string loadShaderSource(const char* filePath) {
-    std::string content;
-    std::ifstream fileStream(filePath, std::ios::in);
-    if (!fileStream.is_open()) {
-        std::cerr << "Could not read file " << filePath << ". File does not exist." << std::endl;
+    try {
+        std::string content;
+        std::ifstream fileStream(filePath, std::ios::in);
+        
+        if (!fileStream.is_open()) {
+            std::string errorMsg = "ERREUR: Impossible d'ouvrir le fichier: " + std::string(filePath);
+            throw std::runtime_error(errorMsg);
+        }
+        
+        std::string line;
+        while (std::getline(fileStream, line)) {
+            content += line + "\n";
+        }
+        
+        if (content.empty()) {
+            std::cerr << "ATTENTION: Le fichier shader est vide: " << filePath << std::endl;
+        }
+        
+        fileStream.close();
+        return content;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Exception dans loadShaderSource: " << e.what() << std::endl;
         return "";
     }
-    std::string line = "";
-    while (!fileStream.eof()) {
-        std::getline(fileStream, line);
-        content.append(line + "\n");
-    }
-    fileStream.close();
-    return content;
 }
 
 // Structure pour stocker les informations de texture
@@ -121,35 +133,40 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 int main() {
-    // Initialisation de GLFW
-    if (!glfwInit()) {
-        std::cerr << "Échec de l'initialisation de GLFW" << std::endl;
-        return -1;
-    }
+    try {
+        // Initialisation de GLFW
+        if (!glfwInit()) {
+            throw std::runtime_error("Échec de l'initialisation de GLFW");
+        }
 
     // Configuration de GLFW
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Création de la fenêtre
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, WINDOW_TITLE, NULL, NULL);
-    if (!window) {
-        std::cerr << "Échec de la création de la fenêtre GLFW" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    
-    // Configuration du callback de redimensionnement
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+        // Création de la fenêtre
+        GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, WINDOW_TITLE, NULL, NULL);
+        if (!window) {
+            throw std::runtime_error("Échec de la création de la fenêtre GLFW");
+        }
+        glfwMakeContextCurrent(window);
+        
+        // Configuration du callback de redimensionnement
+        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // Initialisation de GLEW
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Échec de l'initialisation de GLEW" << std::endl;
-        return -1;
-    }
+        // Initialisation de GLEW
+        glewExperimental = GL_TRUE;
+        GLenum glewError = glewInit();
+        if (glewError != GLEW_OK) {
+            std::string error = "Échec de l'initialisation de GLEW: ";
+            error += reinterpret_cast<const char*>(glewGetErrorString(glewError));
+            throw std::runtime_error(error);
+        }
+        
+        // Vérification de la version d'OpenGL
+        if (!GLEW_VERSION_3_3) {
+            throw std::runtime_error("OpenGL 3.3 n'est pas disponible sur ce système");
+        }
     
     // Configuration d'OpenGL
     glEnable(GL_DEPTH_TEST);
@@ -171,11 +188,42 @@ int main() {
     // Configuration d'OpenGL
     glEnable(GL_DEPTH_TEST);
 
-    // Compilation et liaison des shaders
-    Shader ourShader("shaders/model_loading.vs", "shaders/model_loading.fs");
+        // Compilation et liaison des shaders
+        Shader ourShader;
+        try {
+            std::cout << "Chargement des shaders..." << std::endl;
+            ourShader = Shader(ShaderPaths::MODEL_VS, ShaderPaths::MODEL_FS);
+            std::cout << "Shaders chargés avec succès" << std::endl;
+        } catch (const std::exception& e) {
+            std::string error = "Erreur lors du chargement des shaders: ";
+            error += e.what();
+            throw std::runtime_error(error);
+        }
+
+    // Chargement du modèle
+    Model ourModel;
+    try {
+        std::cout << "Chargement du modèle: " << MODEL_PATH << std::endl;
+        ourModel = Model(MODEL_PATH);
+        std::cout << "Modèle chargé avec succès" << std::endl;
+        
+        // Afficher des informations sur le modèle
+        std::cout << "Nombre de maillages: " << ourModel.meshes.size() << std::endl;
+        std::cout << "Nombre de textures chargées: " << ourModel.textures_loaded.size() << std::endl;
+        
+        // Afficher les chemins des textures chargées
+        for (const auto& texture : ourModel.textures_loaded) {
+            std::cout << "Texture chargée - Type: " << texture.type 
+                      << ", Chemin: " << texture.path << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::string error = "Erreur lors du chargement du modèle: ";
+        error += e.what();
+        throw std::runtime_error(error);
+    }
 
     // Configuration de la lumière
-    glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+    glm::vec3 lightPos(5.0f, 5.0f, 5.0f);  // Position plus éloignée pour une meilleure visibilité
     
     // Boucle de rendu
     while (!glfwWindowShouldClose(window)) {
@@ -211,13 +259,26 @@ int main() {
 
         // Configuration des propriétés des matériaux
         ourShader.setVec3("viewPos", camera.Position);
-        ourShader.setFloat("material.shininess", LightConfig::SHININESS);
+        ourShader.setFloat("material.shininess", 32.0f);
+
+        // Configuration des lumières avec des valeurs plus fortes pour un meilleur rendu
+        ourShader.setVec3("light.position", lightPos);
+        ourShader.setVec3("light.ambient", 0.4f, 0.4f, 0.4f);  // Augmenté pour plus de visibilité
+        ourShader.setVec3("light.diffuse", 1.0f, 1.0f, 1.0f);  // Lumière blanche plus forte
+        ourShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
+        
+        // Afficher des informations de débogage (à supprimer plus tard)
+        static bool debugShown = false;
+        if (!debugShown) {
+            std::cout << "\nConfiguration de la lumière :\n";
+            std::cout << "- Position: (" << lightPos.x << ", " << lightPos.y << ", " << lightPos.z << ")\n";
+            std::cout << "- Vue position: (" << camera.Position.x << ", " << camera.Position.y << ", " << camera.Position.z << ")\n";
+            debugShown = true;
+        }
 
         // Configuration des lumières
-        ourShader.setVec3("light.position", LightConfig::POSITION);
-        ourShader.setVec3("light.ambient", LightConfig::AMBIENT);
-        ourShader.setVec3("light.diffuse", LightConfig::DIFFUSE);
-        ourShader.setVec3("light.specular", LightConfig::SPECULAR);
+        ourShader.setVec3("lightPos", glm::vec3(2.0f, 4.0f, 2.0f));
+        ourShader.setVec3("viewPos", camera.Position);
 
         // Affichage du modèle chargé
         ourModel.Draw(ourShader);
@@ -232,7 +293,17 @@ int main() {
         glfwPollEvents();
     }
 
-    // Nettoyage
-    glfwTerminate();
-    return 0;
+        // Nettoyage
+        glfwTerminate();
+        return 0;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "\n\n!!! ERREUR CRITIQUE !!!\n";
+        std::cerr << "Message d'erreur: " << e.what() << "\n";
+        std::cerr << "Type d'exception: " << typeid(e).name() << "\n\n";
+        
+        // Nettoyage des ressources en cas d'erreur
+        glfwTerminate();
+        return -1;
+    }
 }
