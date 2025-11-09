@@ -259,12 +259,12 @@ int main() {
 
         // Configuration des propriétés des matériaux
         ourShader.setVec3("viewPos", camera.Position);
-        ourShader.setFloat("material.shininess", 32.0f);
+        ourShader.setFloat("material.shininess", 16.0f);
 
-        // Configuration des lumières avec des valeurs plus fortes pour un meilleur rendu
+        // Configuration de la lumière
         ourShader.setVec3("light.position", lightPos);
-        ourShader.setVec3("light.ambient", 0.4f, 0.4f, 0.4f);  // Augmenté pour plus de visibilité
-        ourShader.setVec3("light.diffuse", 1.0f, 1.0f, 1.0f);  // Lumière blanche plus forte
+        ourShader.setVec3("light.ambient", 0.5f, 0.5f, 0.5f);
+        ourShader.setVec3("light.diffuse", 1.0f, 1.0f, 1.0f);
         ourShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
         
         // Afficher des informations de débogage (à supprimer plus tard)
@@ -275,10 +275,6 @@ int main() {
             std::cout << "- Vue position: (" << camera.Position.x << ", " << camera.Position.y << ", " << camera.Position.z << ")\n";
             debugShown = true;
         }
-
-        // Configuration des lumières
-        ourShader.setVec3("lightPos", glm::vec3(2.0f, 4.0f, 2.0f));
-        ourShader.setVec3("viewPos", camera.Position);
 
         // Affichage du modèle chargé
         ourModel.Draw(ourShader);

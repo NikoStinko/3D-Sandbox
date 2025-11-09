@@ -23,6 +23,7 @@ class Model
 public:
     // model data 
     std::vector<Texture> textures_loaded;	// stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
+    bool textures_loaded_flag = false; // flag to track if textures have been loaded
     std::vector<Mesh>    meshes;
     std::string directory;
     bool gammaCorrection;

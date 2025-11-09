@@ -14,6 +14,9 @@ add_executable(${PROJECT_NAME}
     src/Camera.cpp
     src/Model.cpp
     src/Mesh.cpp
+    src/Log.cpp
+    src/Texture.cpp
+    src/ModelManager.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -32,6 +35,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/models)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/logs)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shaders)
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/resources)

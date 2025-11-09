@@ -5,24 +5,51 @@ in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
 
+// Structure pour les propriétés du matériau
 struct Material {
     sampler2D texture_diffuse1;
     sampler2D texture_specular1;
+    bool hasDiffuse;
+    bool hasSpecular;
 };
 
+// Structure pour la lumière
+struct Light {
+    vec3 position;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+// Uniforms
 uniform Material material;
-uniform vec3 lightPos;
+uniform Light light;
 uniform vec3 viewPos;
 
 void main()
 {
-    // Couleurs de base
-    vec3 color = texture(material.texture_diffuse1, TexCoords).rgb;
-    vec3 specColor = texture(material.texture_specular1, TexCoords).rgb;
+    // Couleurs par défaut
+    vec3 diffuseColor = vec3(0.8, 0.8, 0.8); // Couleur grise par défaut
+    vec3 specularColor = vec3(0.2, 0.2, 0.2); // Couleur spéculaire par défaut plus foncée
+    
+    // Charger les textures si disponibles
+    if (material.hasDiffuse) {
+        diffuseColor = texture(material.texture_diffuse1, TexCoords).rgb;
+    } else {
+        // Si pas de texture diffuse, utiliser une couleur unie
+        diffuseColor = vec3(0.8, 0.8, 0.8);
+    }
+    
+    if (material.hasSpecular) {
+        specularColor = texture(material.texture_specular1, TexCoords).rgb;
+    } else {
+        // Si pas de texture spéculaire, utiliser une valeur basse
+        specularColor = vec3(0.2, 0.2, 0.2);
+    }
 
     // Calcul de la lumière (Blinn-Phong)
     vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(lightPos - FragPos);
+    vec3 lightDir = normalize(light.position - FragPos);
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 halfDir = normalize(lightDir + viewDir);
 
@@ -30,9 +57,16 @@ void main()
     float diff = max(dot(norm, lightDir), 0.0);
     float spec = pow(max(dot(norm, halfDir), 0.0), 64.0);
 
-    vec3 ambient = 0.1 * color;
-    vec3 diffuse = diff * color;
-    vec3 specular = spec * specColor;
+    // Calcul des composantes d'éclairage
+    vec3 ambient = light.ambient * diffuseColor;
+    vec3 diffuse = light.diffuse * diff * diffuseColor;
+    vec3 specular = light.specular * spec * specularColor;
 
-    FragColor = vec4(ambient + diffuse + specular, 1.0);
+    // Combinaison finale
+    vec3 result = ambient + diffuse + specular;
+    
+    // Correction gamma
+    result = pow(result, vec3(1.0/2.2));
+    
+    FragColor = vec4(result, 1.0);
 }

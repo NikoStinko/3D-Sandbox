@@ -1,0 +1,5 @@
+Consolidate compiler generated dependencies of target 3D-Sandbox
+[ 11%] Building CXX object CMakeFiles/3D-Sandbox.dir/src/main.cpp.o
+[ 22%] Building CXX object CMakeFiles/3D-Sandbox.dir/src/ModelManager.cpp.o
+[ 33%] Linking CXX executable 3D-Sandbox
+[100%] Built target 3D-Sandbox

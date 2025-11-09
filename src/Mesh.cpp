@@ -14,31 +14,68 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std:
 void Mesh::Draw(Shader &shader) 
 {
     // bind appropriate textures
-    unsigned int diffuseNr  = 1;
-    unsigned int specularNr = 1;
-    unsigned int normalNr   = 1;
-    unsigned int heightNr   = 1;
+    bool hasDiffuse = false;
+    bool hasSpecular = false;
+    bool hasNormal = false;
+    bool hasHeight = false;
+    bool hasAmbient = false;
+
+    // Reset texture units
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     for(unsigned int i = 0; i < textures.size(); i++)
     {
-        glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
-        // retrieve texture number (the N in diffuse_textureN)
-        std::string number;
         std::string name = textures[i].type;
-        if(name == "texture_diffuse")
-            number = std::to_string(diffuseNr++);
-        else if(name == "texture_specular")
-            number = std::to_string(specularNr++);
-        else if(name == "texture_normal")
-            number = std::to_string(normalNr++);
-        else if(name == "texture_height")
-            number = std::to_string(heightNr++);
-
-        // now set the sampler to the correct texture unit
-        glUniform1i(glGetUniformLocation(shader.ID, (name + number).c_str()), i);
-        // and finally bind the texture
-        glBindTexture(GL_TEXTURE_2D, textures[i].id);
+        
+        if (name == "texture_diffuse" && !hasDiffuse) {
+            // Activate texture unit 0 for diffuse
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, textures[i].id);
+            shader.setInt("material.texture_diffuse1", 0);
+            hasDiffuse = true;
+        }
+        else if (name == "texture_specular" && !hasSpecular) {
+            // Activate texture unit 1 for specular
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, textures[i].id);
+            shader.setInt("material.texture_specular1", 1);
+            hasSpecular = true;
+        }
+        else if (name == "texture_normal" && !hasNormal) {
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, textures[i].id);
+            shader.setInt("material.texture_normal1", 2);
+            hasNormal = true;
+        }
+        else if (name == "texture_height" && !hasHeight) {
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, textures[i].id);
+            shader.setInt("material.texture_height1", 3);
+            hasHeight = true;
+        }
+        else if (name == "texture_ambient" && !hasAmbient) {
+            glActiveTexture(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_2D, textures[i].id);
+            shader.setInt("material.texture_ambient1", 4);
+            hasAmbient = true;
+        }
     }
+    
+    // Mettre à jour les états des textures dans le shader
+    shader.setBool("material.hasDiffuse", hasDiffuse);
+    shader.setBool("material.hasSpecular", hasSpecular);
+    shader.setBool("material.hasNormal", hasNormal);
+    shader.setBool("material.hasHeight", hasHeight);
+    shader.setBool("material.hasAmbient", hasAmbient);
 
     // draw mesh
     glBindVertexArray(VAO);

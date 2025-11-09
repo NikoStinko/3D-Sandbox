@@ -7,6 +7,7 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "Model.h"
+#include "ModelManager.h"
 
 #include <iostream>
 
@@ -70,8 +71,10 @@ int main()
     // Build and compile our shader program
     Shader ourShader("../shaders/model_loading.vs", "../shaders/model_loading.fs");
 
-    // Load models
-    Model ourModel("../resources/models/backpack/backpack.obj");
+    // Model manager with drag-and-drop support
+    ModelManager manager;
+    manager.addModel("../resources/models/backpack/backpack.obj");
+    ModelManager::InstallDropHandler(window, &manager);
     
     // Draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -100,12 +103,19 @@ int main()
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
 
+        // Lighting uniforms
+        ourShader.setVec3("viewPos", camera.Position);
+        ourShader.setVec3("light.position", glm::vec3(1.2f, 1.0f, 2.0f));
+        ourShader.setVec3("light.ambient",  glm::vec3(0.2f, 0.2f, 0.2f));
+        ourShader.setVec3("light.diffuse",  glm::vec3(0.7f, 0.7f, 0.7f));
+        ourShader.setVec3("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+
         // Render the loaded model
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // Translate it down a bit so it's at the center of the scene
         model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));    // Scale it down
         ourShader.setMat4("model", model);
-        ourModel.Draw(ourShader);
+        manager.drawAll(ourShader);
 
         // GLFW: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         glfwSwapBuffers(window);
