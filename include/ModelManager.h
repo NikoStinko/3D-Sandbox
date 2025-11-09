@@ -6,6 +6,7 @@
 #include <string>
 #include "Model.h"
 #include "Log.h"
+#include <glm/glm.hpp>
 
 struct GLFWwindow;
 
@@ -21,7 +22,14 @@ public:
     static void DropCallback(GLFWwindow* window, int count, const char** paths);
 
 private:
-    std::vector<std::unique_ptr<Model>> models;
+    struct Entry {
+        std::unique_ptr<Model> model;
+        glm::vec3 position;
+    };
+    std::vector<Entry> models;
+    glm::vec3 nextSpawnOffset = glm::vec3(2.0f, 0.0f, 0.0f);
+    glm::vec3 basePosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    int count = 0;
     static ComponentLogger logger;
 };
 

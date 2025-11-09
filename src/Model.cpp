@@ -264,21 +264,9 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
             indices.push_back(face.mIndices[j]);
     }
     
-    // process materials
+    // process materials: use the mesh's material index directly
     aiMaterial* material = nullptr;
-    
-    // Essayer de trouver un matériau avec des textures
-    for (unsigned int i = 0; i < scene->mNumMaterials; i++) {
-        aiMaterial* mat = scene->mMaterials[i];
-        if (mat->GetTextureCount(aiTextureType_DIFFUSE) > 0 || 
-            mat->GetTextureCount(aiTextureType_SPECULAR) > 0) {
-            material = mat;
-            break;
-        }
-    }
-    
-    // Si aucun matériau avec des textures n'a été trouvé, utiliser le matériau du maillage
-    if (!material && mesh->mMaterialIndex >= 0) {
+    if (mesh->mMaterialIndex >= 0 && mesh->mMaterialIndex < scene->mNumMaterials) {
         material = scene->mMaterials[mesh->mMaterialIndex];
     }
     
@@ -308,11 +296,11 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
         // 2. Charger les textures spéculaires
         std::vector<Texture> specularMaps = loadAndAddTextures(aiTextureType_SPECULAR, "texture_specular");
         
-        // 3. Charger les normales (stockées dans HEIGHT avec Assimp)
-        std::vector<Texture> normalMaps = loadAndAddTextures(aiTextureType_HEIGHT, "texture_normal");
+        // 3. Charger les normales
+        std::vector<Texture> normalMaps = loadAndAddTextures(aiTextureType_NORMALS, "texture_normal");
         
-        // 4. Charger les hauteurs (stockées dans AMBIENT avec Assimp)
-        std::vector<Texture> heightMaps = loadAndAddTextures(aiTextureType_AMBIENT, "texture_height");
+        // 4. Charger les hauteurs
+        std::vector<Texture> heightMaps = loadAndAddTextures(aiTextureType_HEIGHT, "texture_height");
         
         // 5. Si pas de texture ambiante, utiliser la texture diffuse
         if (material->GetTextureCount(aiTextureType_AMBIENT) == 0 && !diffuseMaps.empty()) {
@@ -478,7 +466,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
                             textures.push_back(texture);
                             textures_loaded.push_back(texture);
                             modelLogger.info(std::string("SUCCESS ") + typeName + " (ID: " + std::to_string(textureID) + ")");
-                            return textures;
+                            // do not return here; allow loading additional textures of the same type
                         } else {
                             modelLogger.error(std::string("Echec du chargement texture: ") + fullPath);
                         }
@@ -520,7 +508,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
             for (const auto& loadedTex : textures_loaded) {
                 if (loadedTex.path == fullPath) {
                     textures.push_back(loadedTex);
-                    return textures;
+                    // continue searching for other textures
                 }
             }
             
@@ -540,7 +528,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
                     textures.push_back(texture);
                     textures_loaded.push_back(texture);
                     modelLogger.info(std::string("SUCCESS default ") + typeName + " (ID: " + std::to_string(textureID) + ")");
-                    return textures;
+                    // do not return; continue to allow multiple textures
                 } else {
                     modelLogger.error(std::string("Echec chargement texture par defaut: ") + fullPath);
                 }

@@ -8,6 +8,7 @@
 #include "Camera.h"
 #include "Model.h"
 #include "ModelManager.h"
+#include "UiOverlay.h"
 
 #include <iostream>
 
@@ -75,6 +76,11 @@ int main()
     ModelManager manager;
     manager.addModel("../resources/models/backpack/backpack.obj");
     ModelManager::InstallDropHandler(window, &manager);
+
+    // UI overlay (Dear ImGui)
+    UiOverlay overlay;
+    overlay.init(window, "../resources/models", &manager);
+    bool prevToggleE = false;
     
     // Draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -90,9 +96,19 @@ int main()
         // Input
         processInput(window);
 
+        // Toggle UI with E
+        bool eDown = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
+        if (eDown && !prevToggleE) {
+            overlay.toggleVisible();
+        }
+        prevToggleE = eDown;
+
         // Render
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Begin UI frame
+        overlay.beginFrame();
 
         // Don't forget to enable shader before setting uniforms
         ourShader.use();
@@ -116,6 +132,10 @@ int main()
         model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));    // Scale it down
         ourShader.setMat4("model", model);
         manager.drawAll(ourShader);
+
+        // Draw UI
+        overlay.draw();
+        overlay.endFrame();
 
         // GLFW: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         glfwSwapBuffers(window);

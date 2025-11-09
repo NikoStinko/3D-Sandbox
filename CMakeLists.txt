@@ -8,6 +8,15 @@ find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(assimp REQUIRED)
 
+# FetchContent for Dear ImGui
+include(FetchContent)
+FetchContent_Declare(
+  imgui
+  GIT_REPOSITORY https://github.com/ocornut/imgui.git
+  GIT_TAG v1.91.0
+)
+FetchContent_MakeAvailable(imgui)
+
 add_executable(${PROJECT_NAME} 
     src/main.cpp
     src/Shader.cpp
@@ -17,11 +26,23 @@ add_executable(${PROJECT_NAME}
     src/Log.cpp
     src/Texture.cpp
     src/ModelManager.cpp
+    src/UiOverlay.cpp
+    src/ModelBrowserPanel.cpp
+    src/CustomButtonsPanel.cpp
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    ${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${ASSIMP_INCLUDE_DIRS}
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

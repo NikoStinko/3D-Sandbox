@@ -11,7 +11,12 @@ void ModelManager::addModel(const std::string &path)
 {
     try {
         logger.info(std::string("Ajout du modèle: ") + path);
-        models.emplace_back(std::make_unique<Model>(path));
+        Entry e;
+        e.model = std::make_unique<Model>(path);
+        // simple spacing logic: offset each new model along X
+        e.position = basePosition + float(count) * nextSpawnOffset;
+        models.emplace_back(std::move(e));
+        count++;
     } catch (const std::exception &e) {
         logger.error(std::string("Echec ajout modèle: ") + e.what());
     }
@@ -19,8 +24,11 @@ void ModelManager::addModel(const std::string &path)
 
 void ModelManager::drawAll(Shader &shader)
 {
-    for (auto &m : models) {
-        m->Draw(shader);
+    for (auto &e : models) {
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, e.position);
+        shader.setMat4("model", model);
+        e.model->Draw(shader);
     }
 }
 
