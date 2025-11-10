@@ -49,7 +49,7 @@ cd vcpkg
 .\bootstrap-vcpkg.bat
 ```
 
-### Integrate vcpkg with CMake
+#### Integrate vcpkg with CMake
 
 ```bash
 vcpkg integrate install
