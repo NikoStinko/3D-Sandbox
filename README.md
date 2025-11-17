@@ -4,6 +4,7 @@ A simple 3D sandbox using modern OpenGL and GLFW.
 
 ## Prerequisites
 
+- G++
 - CMake
 - GLFW
 - GLEW
