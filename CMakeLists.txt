@@ -26,6 +26,7 @@ add_executable(${PROJECT_NAME}
     src/Log.cpp
     src/Texture.cpp
     src/ModelManager.cpp
+    src/Grid.cpp
     src/UiOverlay.cpp
     src/ModelBrowserPanel.cpp
     src/CustomButtonsPanel.cpp

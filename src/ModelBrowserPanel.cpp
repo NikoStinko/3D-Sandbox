@@ -61,7 +61,7 @@ void ModelBrowserPanel::draw(bool* open)
 
         bool canLoad = (selected >= 0 && selected < (int)files.size());
         if (ImGui::Button("OK") && canLoad) {
-            if (manager) manager->addModel(files[selected]);
+            if (manager) manager->beginPlacement(files[selected]);
         }
         ImGui::SameLine();
         if (ImGui::Button("Close")) {

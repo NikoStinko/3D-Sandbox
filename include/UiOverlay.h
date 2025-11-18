@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 struct GLFWwindow;
+class Camera;
 
 class ModelManager;
 class ModelBrowserPanel;
@@ -14,7 +15,7 @@ public:
     UiOverlay();
     ~UiOverlay();
 
-    void init(GLFWwindow* window, const std::string& modelsRoot, ModelManager* mgr);
+    void init(GLFWwindow* window, const std::string& modelsRoot, ModelManager* mgr, Camera* cam);
     void shutdown();
 
     void toggleVisible();
@@ -27,6 +28,7 @@ public:
 private:
     GLFWwindow* window = nullptr;
     bool visible = false;
+    Camera* camera = nullptr;
     std::unique_ptr<ModelBrowserPanel> browser;
     std::unique_ptr<CustomButtonsPanel> buttons;
 };

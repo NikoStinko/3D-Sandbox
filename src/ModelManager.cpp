@@ -32,6 +32,49 @@ void ModelManager::drawAll(Shader &shader)
     }
 }
 
+void ModelManager::beginPlacement(const std::string &path)
+{
+    try {
+        logger.info(std::string("Begin placement: ") + path);
+        Entry e;
+        e.model = std::make_unique<Model>(path);
+        e.position = glm::vec3(0.0f);
+        preview = std::move(e);
+    } catch (const std::exception &ex) {
+        logger.error(std::string("Echec beginPlacement: ") + ex.what());
+        preview.reset();
+    }
+}
+
+void ModelManager::setPreviewPosition(const glm::vec3 &pos)
+{
+    if (preview) preview->position = pos;
+}
+
+void ModelManager::confirmPlacement()
+{
+    if (!preview) return;
+    logger.info("Confirm placement");
+    models.emplace_back(std::move(*preview));
+    preview.reset();
+    count++;
+}
+
+void ModelManager::cancelPlacement()
+{
+    logger.info("Cancel placement");
+    preview.reset();
+}
+
+void ModelManager::drawPreview(Shader &shader)
+{
+    if (!preview) return;
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, preview->position);
+    shader.setMat4("model", model);
+    preview->model->Draw(shader);
+}
+
 void ModelManager::InstallDropHandler(GLFWwindow* window, ModelManager* mgr)
 {
     glfwSetWindowUserPointer(window, mgr);

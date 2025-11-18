@@ -7,13 +7,15 @@
 #include <backends/imgui_impl_opengl3.h>
 
 #include <GLFW/glfw3.h>
+#include "Camera.h"
 
 UiOverlay::UiOverlay() {}
 UiOverlay::~UiOverlay() { shutdown(); }
 
-void UiOverlay::init(GLFWwindow* win, const std::string& modelsRoot, ModelManager* mgr)
+void UiOverlay::init(GLFWwindow* win, const std::string& modelsRoot, ModelManager* mgr, Camera* cam)
 {
     window = win;
+    camera = cam;
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -59,6 +61,13 @@ void UiOverlay::draw()
     bool openButtons = true;
     if (browser) browser->draw(&openBrowser);
     if (buttons) buttons->draw(&openButtons);
+
+    // Camera info overlay
+    if (camera) {
+        ImGui::Begin("Info");
+        ImGui::Text("Camera: x=%.2f y=%.2f z=%.2f", camera->Position.x, camera->Position.y, camera->Position.z);
+        ImGui::End();
+    }
 }
 
 void UiOverlay::endFrame()

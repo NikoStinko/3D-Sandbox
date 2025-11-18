@@ -9,6 +9,7 @@
 #include "Model.h"
 #include "ModelManager.h"
 #include "UiOverlay.h"
+#include "Grid.h"
 
 #include <iostream>
 
@@ -74,13 +75,16 @@ int main()
 
     // Model manager with drag-and-drop support
     ModelManager manager;
-    manager.addModel("../resources/models/backpack/backpack.obj");
     ModelManager::InstallDropHandler(window, &manager);
 
     // UI overlay (Dear ImGui)
     UiOverlay overlay;
-    overlay.init(window, "../resources/models", &manager);
+    overlay.init(window, "../resources/models", &manager, &camera);
     bool prevToggleE = false;
+
+    // Grid floor
+    Shader gridShader("../shaders/grid.vs", "../shaders/grid.fs");
+    GridRenderer grid;
     
     // Draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -93,8 +97,10 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        // Input
-        processInput(window);
+        // Input (disable camera controls when cursor is not disabled)
+        if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
+            processInput(window);
+        }
 
         // Toggle UI with E
         bool eDown = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
@@ -126,12 +132,26 @@ int main()
         ourShader.setVec3("light.diffuse",  glm::vec3(0.7f, 0.7f, 0.7f));
         ourShader.setVec3("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
 
-        // Render the loaded model
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // Translate it down a bit so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));    // Scale it down
-        ourShader.setMat4("model", model);
+        // Draw grid
+        grid.draw(gridShader, view, projection);
+
+        // Draw placed models
         manager.drawAll(ourShader);
+
+        // Placement preview follows camera until click
+        if (manager.hasPreview()) {
+            glm::vec3 forward = camera.Front;
+            glm::vec3 pos = camera.Position + forward * 3.0f; // 3 units in front
+            pos.y = 0.0f; // snap to ground plane
+            manager.setPreviewPosition(pos);
+            manager.drawPreview(ourShader);
+
+            // Confirm on left click when not interacting with UI
+            if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED &&
+                glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+                manager.confirmPlacement();
+            }
+        }
 
         // Draw UI
         overlay.draw();
@@ -178,6 +198,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 // GLFW: whenever the mouse moves, this callback is called
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
+    if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) {
+        return; // ignore mouse look when UI is open / cursor visible
+    }
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
 
