@@ -1,6 +1,10 @@
 #include "UiOverlay.h"
 #include "ModelBrowserPanel.h"
 #include "CustomButtonsPanel.h"
+#include "ScenePanel.h"
+#include "SceneState.h"
+#include "MapPanel.h"
+#include "EditorState.h"
 
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
@@ -12,10 +16,21 @@
 UiOverlay::UiOverlay() {}
 UiOverlay::~UiOverlay() { shutdown(); }
 
-void UiOverlay::init(GLFWwindow* win, const std::string& modelsRoot, ModelManager* mgr, Camera* cam)
+void UiOverlay::init(GLFWwindow* win,
+                     const std::string& modelsRoot,
+                     const std::string& mapsRoot,
+                     ModelManager* mgr,
+                     Camera* cam,
+                     SceneState* sceneState,
+                     EditorState* editorState,
+                     const std::function<bool(const std::string&)>& saveCb,
+                     const std::function<bool(const std::string&)>& loadCb,
+                     const std::function<bool(const std::string&)>& newCb)
 {
     window = win;
     camera = cam;
+    scene = sceneState;
+    editor = editorState;
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -27,7 +42,9 @@ void UiOverlay::init(GLFWwindow* win, const std::string& modelsRoot, ModelManage
     ImGui_ImplOpenGL3_Init("#version 130");
 
     browser = std::make_unique<ModelBrowserPanel>(mgr, modelsRoot);
-    buttons = std::make_unique<CustomButtonsPanel>();
+    buttons = std::make_unique<CustomButtonsPanel>(editorState);
+    scenePanel = std::make_unique<ScenePanel>(sceneState);
+    mapPanel = std::make_unique<MapPanel>(mapsRoot, saveCb, loadCb, newCb, editorState);
 }
 
 void UiOverlay::shutdown()
@@ -59,13 +76,24 @@ void UiOverlay::draw()
     if (!visible) return;
     bool openBrowser = true;
     bool openButtons = true;
+    bool openScene = true;
+    bool openMaps = true;
     if (browser) browser->draw(&openBrowser);
     if (buttons) buttons->draw(&openButtons);
+    if (scenePanel) scenePanel->draw(&openScene);
+    if (mapPanel) mapPanel->draw(&openMaps);
 
     // Camera info overlay
     if (camera) {
         ImGui::Begin("Info");
         ImGui::Text("Camera: x=%.2f y=%.2f z=%.2f", camera->Position.x, camera->Position.y, camera->Position.z);
+        if (editor) {
+            ImGui::Text("FPS: %.1f", editor->fps);
+            if (!editor->statusMessage.empty()) {
+                ImGui::Separator();
+                ImGui::TextWrapped("%s", editor->statusMessage.c_str());
+            }
+        }
         ImGui::End();
     }
 }

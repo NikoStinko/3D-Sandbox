@@ -13,9 +13,9 @@ struct Material {
     bool hasSpecular;
 };
 
-// Structure pour la lumière
-struct Light {
-    vec3 position;
+// Structure pour la lumière directionnelle
+struct DirectionalLight {
+    vec3 direction;
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
@@ -23,8 +23,11 @@ struct Light {
 
 // Uniforms
 uniform Material material;
-uniform Light light;
+uniform DirectionalLight dirLight;
 uniform vec3 viewPos;
+uniform float environmentAmbientBoost;
+uniform bool highlightActive;
+uniform vec3 highlightColor;
 
 void main()
 {
@@ -49,7 +52,7 @@ void main()
 
     // Calcul de la lumière (Blinn-Phong)
     vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(light.position - FragPos);
+    vec3 lightDir = normalize(-dirLight.direction);
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 halfDir = normalize(lightDir + viewDir);
 
@@ -58,12 +61,16 @@ void main()
     float spec = pow(max(dot(norm, halfDir), 0.0), 64.0);
 
     // Calcul des composantes d'éclairage
-    vec3 ambient = light.ambient * diffuseColor;
-    vec3 diffuse = light.diffuse * diff * diffuseColor;
-    vec3 specular = light.specular * spec * specularColor;
+    vec3 ambient = dirLight.ambient * diffuseColor * environmentAmbientBoost;
+    vec3 diffuse = dirLight.diffuse * diff * diffuseColor;
+    vec3 specular = dirLight.specular * spec * specularColor;
 
     // Combinaison finale
     vec3 result = ambient + diffuse + specular;
+
+    if (highlightActive) {
+        result = mix(result, highlightColor, 0.5);
+    }
     
     // Correction gamma
     result = pow(result, vec3(1.0/2.2));

@@ -15,7 +15,14 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/ocornut/imgui.git
   GIT_TAG v1.91.0
 )
-FetchContent_MakeAvailable(imgui)
+
+FetchContent_Declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.2
+)
+
+FetchContent_MakeAvailable(imgui nlohmann_json)
 
 add_executable(${PROJECT_NAME} 
     src/main.cpp
@@ -30,6 +37,10 @@ add_executable(${PROJECT_NAME}
     src/UiOverlay.cpp
     src/ModelBrowserPanel.cpp
     src/CustomButtonsPanel.cpp
+    src/MapPanel.cpp
+    src/ScenePanel.cpp
+    src/SceneState.cpp
+    src/SceneSerializer.cpp
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
@@ -51,12 +62,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
     GLEW::GLEW
     ${ASSIMP_LIBRARIES}
+    nlohmann_json::nlohmann_json
     dl
     pthread
 )
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/models)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/maps)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/logs)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shaders)

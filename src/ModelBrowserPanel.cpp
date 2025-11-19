@@ -63,10 +63,6 @@ void ModelBrowserPanel::draw(bool* open)
         if (ImGui::Button("OK") && canLoad) {
             if (manager) manager->beginPlacement(files[selected]);
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Close")) {
-            *open = false;
-        }
     }
     ImGui::End();
 }
