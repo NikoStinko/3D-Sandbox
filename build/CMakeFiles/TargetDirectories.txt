@@ -1,5 +1,0 @@
-/home/nikostinko/Scripts/3D-Sandbox/build/CMakeFiles/3D-Sandbox.dir
-/home/nikostinko/Scripts/3D-Sandbox/build/CMakeFiles/edit_cache.dir
-/home/nikostinko/Scripts/3D-Sandbox/build/CMakeFiles/rebuild_cache.dir
-/home/nikostinko/Scripts/3D-Sandbox/build/_deps/nlohmann_json-build/CMakeFiles/edit_cache.dir
-/home/nikostinko/Scripts/3D-Sandbox/build/_deps/nlohmann_json-build/CMakeFiles/rebuild_cache.dir
