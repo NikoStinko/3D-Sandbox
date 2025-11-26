@@ -22,13 +22,31 @@ public:
     void clear();
     void drawAll(Shader &shader, bool highlight = false, const glm::vec3& highlightColor = glm::vec3(1.0f));
 
-    // Placement workflow
+    // Gestion des objets
     void beginPlacement(const std::string &path);
     bool hasPreview() const { return preview.has_value(); }
     void setPreviewPosition(const glm::vec3 &pos);
     void confirmPlacement();
     void cancelPlacement();
     void drawPreview(Shader &shader, bool highlight = true, const glm::vec3& highlightColor = glm::vec3(1.0f));
+    
+    // Gestion de la sélection
+    bool raycast(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, size_t& outIndex);
+    void updateModel(size_t index, const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, float opacity = 1.0f);
+    
+    // Définition de la structure Entry
+    struct Entry {
+        std::unique_ptr<Model> model;
+        glm::vec3 position = glm::vec3(0.0f);
+        glm::vec3 rotation = glm::vec3(0.0f);
+        glm::vec3 scale = glm::vec3(1.0f);
+        std::string path;
+    };
+    
+    using ModelEntry = Entry;  // Alias pour faciliter l'utilisation
+    
+    const ModelEntry* getModel(size_t index) const;
+    size_t getModelCount() const { return models.size(); }
 
     bool hasModels() const { return !models.empty(); }
     std::vector<ModelInstanceData> serializeInstances() const;
@@ -38,13 +56,6 @@ public:
     static void DropCallback(GLFWwindow* window, int count, const char** paths);
 
 private:
-    struct Entry {
-        std::unique_ptr<Model> model;
-        glm::vec3 position;
-        glm::vec3 rotation;
-        glm::vec3 scale;
-        std::string path;
-    };
     std::vector<Entry> models;
     glm::vec3 nextSpawnOffset = glm::vec3(2.0f, 0.0f, 0.0f);
     glm::vec3 basePosition = glm::vec3(0.0f, 0.0f, 0.0f);

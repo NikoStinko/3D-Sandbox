@@ -6,6 +6,12 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std:
     this->indices = indices;
     this->textures = textures;
 
+    // Calculate mesh bounds
+    for (const auto& vertex : vertices) {
+        minBounds = glm::min(minBounds, vertex.Position);
+        maxBounds = glm::max(maxBounds, vertex.Position);
+    }
+
     // now that we have all the required data, set the vertex buffers and its attribute pointers.
     setupMesh();
 }

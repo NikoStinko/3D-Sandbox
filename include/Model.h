@@ -34,6 +34,21 @@ public:
     // draws the model, and thus all its meshes
     void Draw(Shader &shader);
     
+    // Get model dimensions
+    glm::vec3 getModelSize() const {
+        if (meshes.empty()) return glm::vec3(1.0f);
+        
+        glm::vec3 minBounds = meshes[0].minBounds;
+        glm::vec3 maxBounds = meshes[0].maxBounds;
+        
+        for (const auto& mesh : meshes) {
+            minBounds = glm::min(minBounds, mesh.minBounds);
+            maxBounds = glm::max(maxBounds, mesh.maxBounds);
+        }
+        
+        return maxBounds - minBounds;
+    }
+    
 private:
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
     void loadModel(std::string const &path);

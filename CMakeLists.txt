@@ -41,6 +41,7 @@ add_executable(${PROJECT_NAME}
     src/ScenePanel.cpp
     src/SceneState.cpp
     src/SceneSerializer.cpp
+    src/MenuRenderer.cpp
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp

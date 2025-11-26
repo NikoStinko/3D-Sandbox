@@ -37,6 +37,10 @@ public:
     std::vector<unsigned int> indices;
     std::vector<Texture>      textures;
     unsigned int VAO;
+    
+    // Bounding box
+    glm::vec3 minBounds = glm::vec3(FLT_MAX);
+    glm::vec3 maxBounds = glm::vec3(-FLT_MAX);
 
     // constructor
     Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, std::vector<Texture> textures);

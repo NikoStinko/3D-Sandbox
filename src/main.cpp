@@ -14,17 +14,17 @@
 #include "SceneSerializer.h"
 #include "EditorState.h"
 #include "SceneData.h"
-
+#include "MenuRenderer.h"
 #include <imgui.h>
-
 #include <iostream>
 #include <filesystem>
+#include <cmath>
 
 // Function prototypes
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void processInput(GLFWwindow *window);
+void processInput(GLFWwindow* window, EditorState& editorState, ModelManager& modelManager, Camera& camera, UiOverlay& overlay, bool& overlayOpenedForPause);
 unsigned int loadTexture(const char *path);
 
 // Window dimensions
@@ -199,6 +199,7 @@ int main()
                 newCb);
     bool prevToggleE = false;
     bool prevSaveCombo = false;
+    bool overlayOpenedForPause = false;
 
     // Grid floor
     Shader gridShader("../shaders/grid.vs", "../shaders/grid.fs");
@@ -220,8 +221,22 @@ int main()
         editorState.update(deltaTime);
 
         // Input (disable camera controls when cursor is not disabled)
-        if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED) {
-            processInput(window);
+        if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED || overlay.isVisible() || editorState.menuState != MenuState::None) {
+            processInput(window, editorState, manager, camera, overlay, overlayOpenedForPause);
+        }
+        
+        // Mettre à jour l'état de l'éditeur
+        editorState.update(deltaTime);
+        
+        // Mettre à jour les FPS
+        static float fpsTimer = 0.0f;
+        static int frameCount = 0;
+        fpsTimer += deltaTime;
+        frameCount++;
+        if (fpsTimer >= 0.5f) {
+            editorState.fps = static_cast<float>(frameCount) / fpsTimer;
+            frameCount = 0;
+            fpsTimer = 0.0f;
         }
 
         bool ctrlDown = glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
@@ -233,12 +248,12 @@ int main()
         }
         prevSaveCombo = saveCombo;
 
-        // Toggle UI with E
-        bool eDown = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
-        if (eDown && !prevToggleE) {
-            overlay.toggleVisible();
-        }
-        prevToggleE = eDown;
+        // Toggle UI with E (désactivé pour permettre le menu radial)
+        // bool eDown = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
+        // if (eDown && !prevToggleE) {
+        //     overlay.toggleVisible();
+        // }
+        // prevToggleE = eDown;
 
         // Render
         glm::vec3 skyColor = sceneState.environment().skyColor;
@@ -247,6 +262,30 @@ int main()
 
         // Begin UI frame
         overlay.beginFrame();
+
+        // Sélection d'objet au clic droit (raycast depuis la caméra)
+        {
+            static bool rightWasPressed = false;
+            bool rightIsPressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
+            if (rightIsPressed && !rightWasPressed) {
+                if (editorState.menuState == MenuState::None && !overlay.isVisible() && !manager.hasPreview()) {
+                    size_t hitIndex = 0;
+                    if (manager.raycast(camera.Position, camera.Front, hitIndex)) {
+                        const auto* e = manager.getModel(hitIndex);
+                        if (e) {
+                            std::string basename = e->path;
+                            auto pos = basename.find_last_of("/\\");
+                            if (pos != std::string::npos) basename = basename.substr(pos + 1);
+                            editorState.selectObject(hitIndex, basename, e->position, e->rotation, e->scale, 1.0f);
+                            editorState.setStatusMessage(std::string("Sélection: ") + basename, 2.0f);
+                        }
+                    } else {
+                        editorState.clearSelection();
+                    }
+                }
+            }
+            rightWasPressed = rightIsPressed;
+        }
 
         // Don't forget to enable shader before setting uniforms
         ourShader.use();
@@ -280,13 +319,103 @@ int main()
             ImGuiIO& io = ImGui::GetIO();
             bool mouseCaptured = io.WantCaptureMouse;
             bool leftDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-            if (leftDown && !mouseCaptured) {
+            // Ne gérer le placement que si aucun menu n'est ouvert
+            if (leftDown && !mouseCaptured && editorState.menuState == MenuState::None) {
                 manager.confirmPlacement();
             }
         }
 
         // Draw UI
         overlay.draw();
+        
+        // Dessiner les menus si nécessaire (après overlay.draw)
+        if (editorState.menuState == MenuState::Radial) {
+            ImGuiIO& io = ImGui::GetIO();
+            glm::vec2 center(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+            float radius = 150.0f;
+            MenuRenderer::drawRadialMenu(editorState, center, radius);
+        }
+        
+        // Gérer les clics dans les menus (après avoir dessiné)
+        static bool leftMouseWasPressed = false;
+        bool leftMouseIsPressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+        
+        if (leftMouseIsPressed && !leftMouseWasPressed && editorState.menuState != MenuState::None) {
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            glm::vec2 clickPos(static_cast<float>(xpos), static_cast<float>(ypos));
+            
+            if (editorState.menuState == MenuState::Radial) {
+                ImGuiIO& io = ImGui::GetIO();
+                glm::vec2 center(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
+                float radius = 150.0f;
+                
+                RadialMenuItem clickedItem = MenuRenderer::handleRadialMenuClick(editorState, clickPos, center, radius);
+                if (clickedItem != RadialMenuItem::None) {
+                    switch (clickedItem) {
+                        case RadialMenuItem::InfoLogs:
+                            // Afficher les infos/logs (panneau de scène)
+                            editorState.menuState = MenuState::None;
+                            editorState.activeRadialItem = RadialMenuItem::None;
+                            overlay.showOnlyScenePanel();
+                            break;
+                        case RadialMenuItem::ImportModels:
+                            // Afficher le navigateur de modèles
+                            editorState.menuState = MenuState::None;
+                            editorState.activeRadialItem = RadialMenuItem::None;
+                            overlay.showOnlyModelBrowser();
+                            break;
+                        case RadialMenuItem::SceneSettings:
+                            // Afficher le panneau de paramètres de scène
+                            editorState.menuState = MenuState::None;
+                            editorState.activeRadialItem = RadialMenuItem::None;
+                            overlay.showOnlyScenePanel();
+                            break;
+                        case RadialMenuItem::CustomMenu:
+                            // Afficher le panneau personnalisé
+                            editorState.menuState = MenuState::None;
+                            editorState.activeRadialItem = RadialMenuItem::None;
+                            overlay.showOnlyCustomButtons();
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            } else if (editorState.menuState == MenuState::Pause && !overlay.isVisible()) {
+                PauseMenuItem clickedItem = MenuRenderer::handlePauseMenuClick(editorState, clickPos);
+                if (clickedItem != PauseMenuItem::None) {
+                    switch (clickedItem) {
+                        case PauseMenuItem::MapList:
+                            // Afficher uniquement le panel des maps
+                            editorState.menuState = MenuState::None;
+                            editorState.activePauseItem = PauseMenuItem::None;
+                            overlay.showOnlyMapPanel();
+                            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                            break;
+                        case PauseMenuItem::RadialMenu:
+                            editorState.menuState = MenuState::Radial;
+                            editorState.activePauseItem = PauseMenuItem::None;
+                            // Si l'overlay a été ouvert à cause de l'ESC, le fermer pour le menu radial
+                            if (overlayOpenedForPause) { overlay.toggleVisible(); overlayOpenedForPause = false; }
+                            break;
+                        case PauseMenuItem::Quit:
+                            glfwSetWindowShouldClose(window, true);
+                            break;
+                        case PauseMenuItem::Resume:
+                            editorState.menuState = MenuState::None;
+                            editorState.activePauseItem = PauseMenuItem::None;
+                            // Fermer l'overlay si ouvert pour pause
+                            if (overlayOpenedForPause) { overlay.toggleVisible(); overlayOpenedForPause = false; }
+                            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+        }
+        leftMouseWasPressed = leftMouseIsPressed;
+        
         overlay.endFrame();
 
         // GLFW: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -294,17 +423,133 @@ int main()
         glfwPollEvents();
     }
 
-    // Terminate GLFW, clearing any resources allocated by GLFW.
     glfwTerminate();
-    return 0;
+    return -1;
 }
 
-// Process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+// Fonction de rappel pour le redimensionnement de la fenêtre
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+}
 
+// Fonction de rappel pour le mouvement de la souris
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
+    static float lastX = SCR_WIDTH / 2.0f;
+    static float lastY = SCR_HEIGHT / 2.0f;
+    static bool firstMouse = true;
+
+    if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) {
+        return; // Ignorer le mouvement de la souris quand l'UI est ouverte
+    }
+
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (firstMouse) {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // Inversé car les coordonnées Y vont de bas en haut
+
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+// Fonction de rappel pour la molette de défilement
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    camera.ProcessMouseScroll(static_cast<float>(yoffset));
+}
+
+// Fonction de traitement des entrées clavier
+void processInput(GLFWwindow* window, EditorState& editorState, ModelManager& modelManager, Camera& camera, UiOverlay& overlay, bool& overlayOpenedForPause) {
+    static bool escapeWasPressed = false;
+    static bool tabWasPressed = false;
+    static float lastFrame = 0.0f;
+    
+    // Calcul du deltaTime
+    float currentFrame = static_cast<float>(glfwGetTime());
+    float deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
+
+    // Gestion des clics dans les menus
+    static bool leftMouseWasPressed = false;
+    bool leftMouseIsPressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+    
+    leftMouseWasPressed = leftMouseIsPressed;
+
+    // Gestion de la touche Échap (menu pause et fermeture des panneaux)
+    bool escapeIsPressed = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
+    if (escapeIsPressed && !escapeWasPressed) {
+        if (editorState.menuState == MenuState::Pause) {
+            // Quitter le menu pause
+            editorState.menuState = MenuState::None;
+            editorState.activePauseItem = PauseMenuItem::None;
+            // Si l'overlay a été ouvert pour la pause, le fermer
+            if (overlayOpenedForPause && overlay.isVisible()) { overlay.toggleVisible(); overlayOpenedForPause = false; }
+        } else if (editorState.menuState == MenuState::Radial) {
+            // Retour au menu pause
+            editorState.menuState = MenuState::Pause;
+            editorState.activePauseItem = PauseMenuItem::None;
+            // S'assurer que l'overlay est visible pour afficher le menu pause (style overlay)
+            if (!overlay.isVisible()) { overlay.toggleVisible(); overlayOpenedForPause = true; }
+        } else if (overlay.isVisible()) {
+            // Fermer toutes les fenêtres UI si aucune pause n'est active
+            overlay.hideAllPanels();
+            overlay.toggleVisible();
+            overlayOpenedForPause = false;
+        } else {
+            // Ouvrir le menu pause avec le style overlay
+            editorState.menuState = MenuState::Pause;
+            editorState.activePauseItem = PauseMenuItem::Resume; // Sélection par défaut
+            // Masquer tous les panneaux pour n'afficher que le menu pause overlay
+            overlay.hideAllPanels();
+            if (!overlay.isVisible()) { overlay.toggleVisible(); overlayOpenedForPause = true; }
+        }
+    }
+    
+    // Gérer l'état du curseur en fonction de l'état du menu et de l'overlay
+    if (editorState.menuState != MenuState::None || overlay.isVisible()) {
+        if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+    } else {
+        if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
+    }
+    escapeWasPressed = escapeIsPressed;
+
+    // Gestion de la touche Tab (menu radial)
+    bool tabIsPressed = glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS;
+    if (tabIsPressed && !tabWasPressed && editorState.menuState != MenuState::Pause) {
+        // Basculer le menu radial (pas en pause)
+        if (editorState.menuState == MenuState::Radial) {
+            editorState.menuState = MenuState::None;
+            editorState.activeRadialItem = RadialMenuItem::None;
+            // Capturer le curseur à nouveau
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        } else {
+            editorState.menuState = MenuState::Radial;
+            editorState.activeRadialItem = RadialMenuItem::None;
+            // Si l'overlay a été ouvert pour pause, le fermer pour éviter superposition
+            if (overlayOpenedForPause && overlay.isVisible()) { overlay.toggleVisible(); overlayOpenedForPause = false; }
+            // Libérer le curseur pour permettre la sélection avec la souris
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+    }
+    tabWasPressed = tabIsPressed;
+
+    // Si un menu est actif, on ne traite pas les déplacements de la caméra
+    if (editorState.menuState != MenuState::None) {
+        return;
+    }
+
+    // Déplacements de la caméra
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -317,43 +562,4 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(UP, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         camera.ProcessKeyboard(DOWN, deltaTime);
-}
-
-// GLFW: whenever the window size changed (by OS or user resize) this callback function executes
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    // Make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
-}
-
-// GLFW: whenever the mouse moves, this callback is called
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
-{
-    if (glfwGetInputMode(window, GLFW_CURSOR) != GLFW_CURSOR_DISABLED) {
-        return; // ignore mouse look when UI is open / cursor visible
-    }
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-
-    lastX = xpos;
-    lastY = ypos;
-
-    camera.ProcessMouseMovement(xoffset, yoffset);
-}
-
-// GLFW: whenever the mouse scroll wheel scrolls, this callback is called
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }

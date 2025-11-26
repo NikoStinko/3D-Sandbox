@@ -11,7 +11,12 @@ class ModelManager;
 class ModelBrowserPanel {
 public:
     ModelBrowserPanel(ModelManager* mgr, const std::string& rootDir);
-    void draw(bool* open);
+    void draw(bool* open = nullptr);
+    void setVisible(bool visible) { m_visible = visible; }
+    bool isVisible() const { return m_visible; }
+
+private:
+    bool m_visible = true;
 
 private:
     ModelManager* manager;

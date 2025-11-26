@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#include <sstream>
 
 ComponentLogger ModelManager::logger("Model");
 
@@ -30,11 +31,40 @@ void ModelManager::addModelInstance(const ModelInstanceData& data)
         e.model = std::make_unique<Model>(data.path);
         e.position = data.position;
         e.rotation = data.rotation;
-        e.scale = data.scale;
         e.path = data.path;
+        
+        // Calculer l'échelle automatique si nécessaire
+        if (data.autoScale) {
+            // Obtenir la taille du modèle
+            glm::vec3 modelSize = e.model->getModelSize();
+            
+            // Éviter la division par zéro
+            if (modelSize.x > 0.0f && modelSize.y > 0.0f && modelSize.z > 0.0f) {
+                // Calculer l'échelle pour normaliser la plus grande dimension à 1.0
+                float maxDim = std::max({modelSize.x, modelSize.y, modelSize.z});
+                float scaleFactor = 1.0f / maxDim;
+                
+                // Appliquer l'échelle de base du modèle
+                e.scale = glm::vec3(scaleFactor) * data.scale;
+                
+                std::stringstream ss;
+                ss << "Mise à l'échelle automatique du modèle: "
+                   << "taille=" << modelSize.x << "x" << modelSize.y << "x" << modelSize.z
+                   << ", facteur d'échelle=" << scaleFactor;
+                logger.info(ss.str());
+            } else {
+                e.scale = glm::vec3(1.0f);
+                logger.info("Impossible de calculer l'échelle automatique, utilisation de l'échelle par défaut");
+            }
+        } else {
+            e.scale = data.scale;
+        }
+        
+        // Éviter une échelle nulle
         if (e.scale == glm::vec3(0.0f)) {
             e.scale = glm::vec3(1.0f);
         }
+        
         models.emplace_back(std::move(e));
         count++;
     } catch (const std::exception &ex) {
@@ -157,4 +187,53 @@ void ModelManager::loadInstances(const std::vector<ModelInstanceData>& data)
     for (const auto& entry : data) {
         addModelInstance(entry);
     }
+}
+
+bool ModelManager::raycast(const glm::vec3& rayOrigin, const glm::vec3& rayDirection, size_t& outIndex) {
+    float closestT = std::numeric_limits<float>::max();
+    bool hit = false;
+    
+    for (size_t i = 0; i < models.size(); ++i) {
+        const auto& entry = models[i];
+        
+        // Simple AABB test pour l'instant (peut être amélioré avec un test plus précis)
+        glm::vec3 minBounds = entry.position - entry.scale * 0.5f;
+        glm::vec3 maxBounds = entry.position + entry.scale * 0.5f;
+        
+        float t1 = (minBounds.x - rayOrigin.x) / rayDirection.x;
+        float t2 = (maxBounds.x - rayOrigin.x) / rayDirection.x;
+        float t3 = (minBounds.y - rayOrigin.y) / rayDirection.y;
+        float t4 = (maxBounds.y - rayOrigin.y) / rayDirection.y;
+        float t5 = (minBounds.z - rayOrigin.z) / rayDirection.z;
+        float t6 = (maxBounds.z - rayOrigin.z) / rayDirection.z;
+        
+        float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+        float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+        
+        if (tmax >= 0 && tmin <= tmax) {
+            if (tmin < closestT) {
+                closestT = tmin;
+                outIndex = i;
+                hit = true;
+            }
+        }
+    }
+    
+    return hit;
+}
+
+void ModelManager::updateModel(size_t index, const glm::vec3& position, const glm::vec3& rotation, const glm::vec3& scale, float opacity) {
+    if (index < models.size()) {
+        models[index].position = position;
+        models[index].rotation = rotation;
+        models[index].scale = scale;
+        // L'opacité devra être gérée dans le shader
+    }
+}
+
+const ModelManager::Entry* ModelManager::getModel(size_t index) const {
+    if (index < models.size()) {
+        return &models[index];
+    }
+    return nullptr;
 }

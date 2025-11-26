@@ -20,7 +20,12 @@ public:
              NewCallback newCb,
              EditorState* editor);
 
-    void draw(bool* open);
+    void draw(bool* open = nullptr);
+    void setVisible(bool visible) { m_visible = visible; }
+    bool isVisible() const { return m_visible; }
+
+private:
+    bool m_visible = true;
 
     void rescan();
 

@@ -7,7 +7,12 @@ class CustomButtonsPanel {
 public:
     explicit CustomButtonsPanel(EditorState* editorState);
 
-    void draw(bool* open);
+    void draw(bool* open = nullptr);
+    void setVisible(bool visible) { m_visible = visible; }
+    bool isVisible() const { return m_visible; }
+
+private:
+    bool m_visible = true;
 
 private:
     EditorState* editor = nullptr;

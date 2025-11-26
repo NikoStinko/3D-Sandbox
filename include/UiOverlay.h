@@ -4,6 +4,9 @@
 #include <string>
 #include <memory>
 #include <functional>
+
+#include <imgui.h>
+#include <glm/glm.hpp>
 struct GLFWwindow;
 class Camera;
 class SceneState;
@@ -39,12 +42,31 @@ public:
     void draw();
     void endFrame();
 
+    // Utilitaires de visibilité des panneaux
+    void hideAllPanels();
+    void showOnlyMapPanel();
+    void showOnlyModelBrowser();
+    void showOnlyScenePanel();
+    void showOnlyCustomButtons();
+
 private:
+    // Fonction utilitaire pour dessiner un bouton de menu radial
+    void DrawRadialButton(const char* label, const ImVec2& center, float radius, float angleStart, float angleEnd, bool& hovered);
+    
     GLFWwindow* window = nullptr;
     bool visible = false;
     Camera* camera = nullptr;
     SceneState* scene = nullptr;
     EditorState* editor = nullptr;
+    ModelManager* models = nullptr;
+
+    // État du menu contextuel (clic droit)
+    bool showResizePopup = false;
+    bool showRotatePopup = false;
+    size_t contextIndex = 0;
+    glm::vec3 tmpScale = glm::vec3(1.0f);
+    glm::vec3 tmpRotation = glm::vec3(0.0f);
+
     std::unique_ptr<ModelBrowserPanel> browser;
     std::unique_ptr<CustomButtonsPanel> buttons;
     std::unique_ptr<ScenePanel> scenePanel;
