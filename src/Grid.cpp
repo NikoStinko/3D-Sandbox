@@ -4,18 +4,18 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 
-GridRenderer::GridRenderer()
+Grid::Grid()
 {
     buildGrid(20, 1.0f);
 }
 
-GridRenderer::~GridRenderer()
+Grid::~Grid()
 {
     if (vbo) glDeleteBuffers(1, &vbo);
     if (vao) glDeleteVertexArrays(1, &vao);
 }
 
-void GridRenderer::buildGrid(int halfSize, float step)
+void Grid::buildGrid(int halfSize, float step)
 {
     // Each line segment has two vertices, each vertex has position (x,y,z) and color (r,g,b)
     std::vector<float> data;
@@ -62,7 +62,7 @@ void GridRenderer::buildGrid(int halfSize, float step)
     glBindVertexArray(0);
 }
 
-void GridRenderer::draw(Shader &shader, const glm::mat4 &view, const glm::mat4 &proj)
+void Grid::draw(Shader &shader, const glm::mat4 &view, const glm::mat4 &proj)
 {
     shader.use();
     shader.setMat4("view", view);

@@ -15,6 +15,7 @@
 #include "EditorState.h"
 #include "SceneData.h"
 #include "MenuRenderer.h"
+#include "SandBoxUI.h"
 #include <imgui.h>
 #include <iostream>
 #include <filesystem>
@@ -28,8 +29,8 @@ void processInput(GLFWwindow* window, EditorState& editorState, ModelManager& mo
 unsigned int loadTexture(const char *path);
 
 // Window dimensions
-const unsigned int SCR_WIDTH = 1280;
-const unsigned int SCR_HEIGHT = 720;
+const unsigned int SCR_WIDTH = 1600;
+const unsigned int SCR_HEIGHT = 900;
 
 // Camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -201,9 +202,11 @@ int main()
     bool prevSaveCombo = false;
     bool overlayOpenedForPause = false;
 
+    SandBoxUI sandboxUI(&manager, &editorState, &camera);
+
     // Grid floor
     Shader gridShader("../shaders/grid.vs", "../shaders/grid.fs");
-    GridRenderer grid;
+    Grid grid;
     
     // Draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -263,29 +266,8 @@ int main()
         // Begin UI frame
         overlay.beginFrame();
 
-        // Sélection d'objet au clic droit (raycast depuis la caméra)
-        {
-            static bool rightWasPressed = false;
-            bool rightIsPressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
-            if (rightIsPressed && !rightWasPressed) {
-                if (editorState.menuState == MenuState::None && !overlay.isVisible() && !manager.hasPreview()) {
-                    size_t hitIndex = 0;
-                    if (manager.raycast(camera.Position, camera.Front, hitIndex)) {
-                        const auto* e = manager.getModel(hitIndex);
-                        if (e) {
-                            std::string basename = e->path;
-                            auto pos = basename.find_last_of("/\\");
-                            if (pos != std::string::npos) basename = basename.substr(pos + 1);
-                            editorState.selectObject(hitIndex, basename, e->position, e->rotation, e->scale, 1.0f);
-                            editorState.setStatusMessage(std::string("Sélection: ") + basename, 2.0f);
-                        }
-                    } else {
-                        editorState.clearSelection();
-                    }
-                }
-            }
-            rightWasPressed = rightIsPressed;
-        }
+        // UI métier centralisée (picking triangulation, menu contextuel)
+        sandboxUI.draw(window);
 
         // Don't forget to enable shader before setting uniforms
         ourShader.use();
@@ -360,16 +342,16 @@ int main()
                             overlay.showOnlyScenePanel();
                             break;
                         case RadialMenuItem::ImportModels:
-                            // Afficher le navigateur de modèles
+                            // Afficher le navigateur de modèles (via SandBoxUI)
                             editorState.menuState = MenuState::None;
                             editorState.activeRadialItem = RadialMenuItem::None;
-                            overlay.showOnlyModelBrowser();
+                            sandboxUI.openModelBrowser(overlay);
                             break;
                         case RadialMenuItem::SceneSettings:
-                            // Afficher le panneau de paramètres de scène
+                            // Afficher le panneau de paramètres de scène (via SandBoxUI)
                             editorState.menuState = MenuState::None;
                             editorState.activeRadialItem = RadialMenuItem::None;
-                            overlay.showOnlyScenePanel();
+                            sandboxUI.openScenePanel(overlay);
                             break;
                         case RadialMenuItem::CustomMenu:
                             // Afficher le panneau personnalisé
@@ -386,10 +368,10 @@ int main()
                 if (clickedItem != PauseMenuItem::None) {
                     switch (clickedItem) {
                         case PauseMenuItem::MapList:
-                            // Afficher uniquement le panel des maps
+                            // Afficher uniquement le panel des maps (via SandBoxUI)
                             editorState.menuState = MenuState::None;
                             editorState.activePauseItem = PauseMenuItem::None;
-                            overlay.showOnlyMapPanel();
+                            sandboxUI.openMapPanel(overlay);
                             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
                             break;
                         case PauseMenuItem::RadialMenu:

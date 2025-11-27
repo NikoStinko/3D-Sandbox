@@ -42,6 +42,12 @@ add_executable(${PROJECT_NAME}
     src/SceneState.cpp
     src/SceneSerializer.cpp
     src/MenuRenderer.cpp
+    src/SandBoxUI.cpp
+    src/Window.cpp
+    src/InputHandler.cpp
+    src/Renderer.cpp
+    src/Scene.cpp
+    src/App.cpp
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp

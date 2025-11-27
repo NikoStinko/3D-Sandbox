@@ -7,10 +7,10 @@
 
 class Shader;
 
-class GridRenderer {
+class Grid {
 public:
-    GridRenderer();
-    ~GridRenderer();
+    Grid();
+    ~Grid();
 
     void draw(Shader &shader, const glm::mat4 &view, const glm::mat4 &proj);
 

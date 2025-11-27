@@ -5,7 +5,6 @@
 #include "SceneState.h"
 #include "MapPanel.h"
 #include "EditorState.h"
-#include "ModelManager.h"
 
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
@@ -42,7 +41,6 @@ void UiOverlay::init(GLFWwindow* win,
     // GLSL version string depending on your context; 130 works for GL 3.0+, 330 for core
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    models = mgr;
     browser = std::make_unique<ModelBrowserPanel>(mgr, modelsRoot);
     buttons = std::make_unique<CustomButtonsPanel>(editorState);
     scenePanel = std::make_unique<ScenePanel>(sceneState);
@@ -206,61 +204,6 @@ void UiOverlay::draw()
         }
         
         ImGui::End();
-    }
-
-    // Menu contextuel (clic droit) pour l'objet sélectionné
-    if (editor && editor->selectedObject.has_value()) {
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-            ImGui::OpenPopup("ObjectContext");
-            contextIndex = editor->selectedObject->modelIndex;
-        }
-        if (ImGui::BeginPopup("ObjectContext")) {
-            if (ImGui::MenuItem("Resize")) {
-                showResizePopup = true;
-                tmpScale = editor->selectedObject->scale;
-            }
-            if (ImGui::MenuItem("Rotate")) {
-                showRotatePopup = true;
-                tmpRotation = editor->selectedObject->rotation;
-            }
-            ImGui::EndPopup();
-        }
-        if (showResizePopup) {
-            ImGui::SetNextWindowSize(ImVec2(320, 160), ImGuiCond_Appearing);
-            if (ImGui::Begin("Resize Object", &showResizePopup, ImGuiWindowFlags_NoSavedSettings)) {
-                ImGui::Text("Scale");
-                ImGui::DragFloat3("##scale", &tmpScale.x, 0.01f, 0.01f, 100.0f);
-                if (ImGui::Button("Apply")) {
-                    if (models && contextIndex < models->getModelCount()) {
-                        auto sel = *editor->selectedObject;
-                        models->updateModel(contextIndex, sel.position, sel.rotation, tmpScale, sel.opacity);
-                        editor->selectedObject->scale = tmpScale;
-                    }
-                    showResizePopup = false;
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Cancel")) { showResizePopup = false; }
-                ImGui::End();
-            }
-        }
-        if (showRotatePopup) {
-            ImGui::SetNextWindowSize(ImVec2(320, 160), ImGuiCond_Appearing);
-            if (ImGui::Begin("Rotate Object", &showRotatePopup, ImGuiWindowFlags_NoSavedSettings)) {
-                ImGui::Text("Rotation (deg)");
-                ImGui::DragFloat3("##rot", &tmpRotation.x, 0.5f, -360.0f, 360.0f);
-                if (ImGui::Button("Apply")) {
-                    if (models && contextIndex < models->getModelCount()) {
-                        auto sel = *editor->selectedObject;
-                        models->updateModel(contextIndex, sel.position, tmpRotation, sel.scale, sel.opacity);
-                        editor->selectedObject->rotation = tmpRotation;
-                    }
-                    showRotatePopup = false;
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Cancel")) { showRotatePopup = false; }
-                ImGui::End();
-            }
-        }
     }
 
     // Dessiner les panneaux d'interface utilisateur standards
